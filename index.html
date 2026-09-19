@@ -322,6 +322,7 @@ footer .legal strong{color:var(--dmuted)}
       <a href="#learning">Re-learning</a>
       <a href="#scope" class="opt">Markets</a>
       <a href="#results">Test results</a>
+      <a href="#try">Free backtest</a>
       <a href="#live" class="opt">Live</a>
       <a href="#faq" class="opt">Questions</a>
       <a class="pill" href="#pricing">Buy</a>
@@ -501,6 +502,32 @@ footer .legal strong{color:var(--dmuted)}
   </div>
 </section>
 
+
+<section id="try">
+  <div class="wrap">
+    <div class="head">
+      <h2>Test it yourself first, for free</h2>
+      <p>The build below runs in the Strategy Tester and nowhere else. No key, no email, no account number. It is the same code as the paid version, with live and demo trading disabled.</p>
+    </div>
+
+    <div class="actions" style="margin-bottom:34px">
+      <a class="btn brass" href="KalmanFlowPro_Backtest.ex5" download>Download the free backtest build</a>
+    </div>
+
+    <ol class="steps">
+      <li><b>Put the file in place</b><p>Copy <code>KalmanFlowPro_Backtest.ex5</code> into <code>MQL5/Experts</code> inside your terminal's data folder. In MetaTrader: File &rarr; Open Data Folder. Then right-click Expert Advisors in the Navigator and choose Refresh.</p></li>
+      <li><b>Give it enough history</b><p>It needs roughly 2,000 closed bars before the first trade, so the filter and the regime model can be fitted. On a fresh terminal, open the chart and scroll back once to pull the history down.</p></li>
+      <li><b>Use your own costs</b><p>In the Strategy Tester choose Every tick based on real ticks, and set the spread your broker actually charges rather than the fixed default. This matters more than any setting in the robot: the spread decides whether the method works on your instrument at all.</p></li>
+      <li><b>Leave the defaults alone on the first run</b><p>Signal mode is already on Auto, and the filter estimates its own parameters from your data. If you want to change something afterwards, change the risk percentage and the stop size in ATR first.</p></li>
+    </ol>
+
+    <div class="caveat" style="border-left-color:var(--brass)">
+      <h3>What a good backtest here does and does not prove</h3>
+      <p>The re-learning is walk-forward by construction, so the robot never sees the bar it trades and a tester result is not contaminated by hindsight in that respect. What it still cannot tell you is how the same rules behave in a market regime that is not in your history, or how your broker fills orders in practice. Run it on demo before you run it with money.</p>
+    </div>
+  </div>
+</section>
+
 <section id="live" class="dark">
   <div class="wrap">
     <div class="head">
@@ -661,6 +688,8 @@ footer .legal strong{color:var(--dmuted)}
           <li><a href="https://wisfli.com/">wisfli.com</a></li>
           <li><a href="https://jsgaston.github.io/candlegrid-web-en/">CandleGrid Pro</a></li>
           <li><a href="https://jsgaston.github.io/regimeswitch-web-en/">RegimeSwitch Pro</a></li>
+          <li><a href="https://jsgaston.github.io/Charlie/">BearStack Pro</a></li>
+          <li><a href="https://jsgaston.github.io/Delta/">WickFlow Pro</a></li>
           <li><a href="https://jsgaston.github.io/armada/">Armada signal</a></li>
           <li><a href="mailto:support@wisfli.com">Email</a></li>
         </ul>
