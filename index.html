@@ -285,6 +285,30 @@ footer .legal strong{color:var(--dmuted)}
 .shots figure{margin:0;background:var(--abyss-2);border:1px solid var(--drule-2)}
 .shots img{width:100%;background:#fff}
 .shots figcaption{padding:14px 18px;font:400 13.5px/1.55 Archivo;color:var(--dmuted)}
+/* ---------- armada panel ---------- */
+.arm{border:1px solid var(--drule-2);background:rgba(15,44,66,.35)}
+.arm-head{display:flex;align-items:center;gap:14px;padding:18px 22px;border-bottom:1px solid var(--drule)}
+.arm-flag{display:block}
+.arm-head svg{width:40px;height:27px;display:block;box-shadow:0 2px 0 rgba(0,0,0,.35)}
+.arm-head b{display:block;font:700 17px Archivo;color:#fff;font-stretch:112%}
+.arm-head span.s{display:block;font:500 13px Archivo;color:var(--dmuted);margin-top:3px}
+.arm-head #arm-sub{display:block;font:500 13px Archivo;color:var(--dmuted);margin-top:3px}
+.arm-badge{margin-left:auto;font:700 12px Archivo;letter-spacing:.08em;color:#1A1206;background:var(--brass);padding:5px 10px}
+.arm-grid{display:grid;grid-template-columns:repeat(5,1fr)}
+.arm-grid div{padding:18px 20px 20px;border-right:1px solid var(--drule)}
+.arm-grid div:last-child{border-right:0}
+.arm-grid b{display:block;font:800 30px/1 Archivo;color:#fff;font-stretch:106%;letter-spacing:-.02em}
+.arm-grid b.pos{color:var(--sig)} .arm-grid b.neg{color:var(--sig-down)}
+.arm-grid span{display:block;font:500 12px Archivo;color:var(--dmuted);margin-top:7px}
+.arm-chart{padding:10px 20px 18px;border-top:1px solid var(--drule)}
+.arm-chart svg{width:100%;height:auto;display:block}
+.arm-note{margin:0;padding:26px 22px;color:var(--dmuted);font-size:16px}
+.arm-note b{color:#DCE6EC}
+.arm-foot{display:flex;justify-content:space-between;gap:16px;padding:13px 22px;border-top:1px solid var(--drule);font:500 12.5px Archivo;color:var(--dmuted)}
+.arm-foot a{color:var(--dmuted);text-decoration:none}
+.arm-foot a:hover{color:#fff}
+@media(max-width:820px){.arm-grid{grid-template-columns:repeat(2,1fr)}.arm-grid div{border-right:0;border-bottom:1px solid var(--drule)}}
+
 </style>
 </head>
 <body>
@@ -298,6 +322,7 @@ footer .legal strong{color:var(--dmuted)}
       <a href="#learning">Re-learning</a>
       <a href="#scope" class="opt">Markets</a>
       <a href="#results">Test results</a>
+      <a href="#live" class="opt">Live</a>
       <a href="#faq" class="opt">Questions</a>
       <a class="pill" href="#pricing">Buy</a>
     </nav>
@@ -476,6 +501,31 @@ footer .legal strong{color:var(--dmuted)}
   </div>
 </section>
 
+<section id="live" class="dark">
+  <div class="wrap">
+    <div class="head">
+      <h2>Live in Armada</h2>
+      <p>This robot sails in the Armada account under flag Echo. The panel below is filled from the account's own published statistics, not typed in by hand, and it updates every fifteen minutes whether the numbers are good or bad.</p>
+    </div>
+    <div class="arm" id="arm-panel" aria-live="polite">
+      <div class="arm-head">
+        <span class="arm-flag" id="arm-flag"></span>
+        <div>
+          <b id="arm-name">Echo</b>
+          <span id="arm-sub">Loading the published record&hellip;</span>
+        </div>
+        <span class="arm-badge" id="arm-badge" hidden>DEMO</span>
+      </div>
+      <div id="arm-body"><p class="arm-note">Reading <code>stats.json</code>&hellip;</p></div>
+      <div class="arm-foot">
+        <span id="arm-upd">&nbsp;</span>
+        <a href="https://jsgaston.github.io/armada/">Open the Armada page &rarr;</a>
+      </div>
+    </div>
+    <p class="hint" style="color:var(--dmuted);margin-top:22px">The Armada account is a demo account while the record is being built, and execution on demo is more favourable than on a real account. Open positions, entry prices and the account number are never published.</p>
+  </div>
+</section>
+
 <section id="pricing" class="panel">
   <div class="wrap">
     <div class="head">
@@ -625,6 +675,111 @@ footer .legal strong{color:var(--dmuted)}
 
 <script>document.getElementById('yr').textContent = new Date().getFullYear();</script>
 <script src="https://js.stripe.com/v3/buy-button.js" async></script>
+<script>
+/* Armada panel — reads the account's own published stats.json.
+   Nothing here is hand typed: if the bot has not traded, it says so. */
+(function(){
+  var FLAG_E = '<path d="M0 0h60v20H0z" fill="#14528C"/><path d="M0 20h60v20H0z" fill="#C8322A"/>';
+  var URL = 'https://jsgaston.github.io/armada/stats.json';
+  var $ = function(id){ return document.getElementById(id); };
+  function nil(v){ return v===null||v===undefined||(typeof v==='number'&&isNaN(v)); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function pct(n,d){ d=d==null?2:d; return nil(n)?'—':(n>0?'+':(n<0?'−':''))+Math.abs(n).toFixed(d)+'%'; }
+  function upct(n,d){ d=d==null?1:d; return nil(n)?'—':Math.abs(n).toFixed(d)+'%'; }
+  function num(n,d){ d=d==null?2:d; return nil(n)?'—':(n<0?'−':'')+Math.abs(n).toFixed(d); }
+
+  /* monotone cubic: smooth, but never invents a peak the data doesn't have */
+  function smoothPath(P){
+    var n=P.length; if(!n) return '';
+    if(n<3) return P.map(function(p,i){return (i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1);}).join('');
+    var dx=[],dy=[],m=[],t=[],i;
+    for(i=0;i<n-1;i++){ dx[i]=(P[i+1][0]-P[i][0])||1e-6; dy[i]=P[i+1][1]-P[i][1]; m[i]=dy[i]/dx[i]; }
+    t[0]=m[0]; t[n-1]=m[n-2];
+    for(i=1;i<n-1;i++) t[i]= m[i-1]*m[i]<=0 ? 0 : 3*(dx[i-1]+dx[i])/((2*dx[i]+dx[i-1])/m[i-1]+(dx[i]+2*dx[i-1])/m[i]);
+    var d='M'+P[0][0].toFixed(1)+' '+P[0][1].toFixed(1);
+    for(i=0;i<n-1;i++){ var h=dx[i]/3;
+      d+='C'+(P[i][0]+h).toFixed(1)+' '+(P[i][1]+t[i]*h).toFixed(1)+' '
+        +(P[i+1][0]-h).toFixed(1)+' '+(P[i+1][1]-t[i+1]*h).toFixed(1)+' '
+        +P[i+1][0].toFixed(1)+' '+P[i+1][1].toFixed(1); }
+    return d;
+  }
+
+  function chart(eq){
+    if(!eq || eq.length<2) return '';
+    var W=960,H=180,PT=12,PB=12;
+    var vs=eq.map(function(p){return p.v;});
+    var lo=Math.min.apply(null,vs.concat([100])), hi=Math.max.apply(null,vs.concat([100]));
+    var pad=(hi-lo)*0.12||1; lo-=pad; hi+=pad;
+    var n=eq.length-1||1;
+    var X=function(i){ return i/n*W; };
+    var Y=function(v){ return PT+(1-(v-lo)/(hi-lo))*(H-PT-PB); };
+    var d=smoothPath(eq.map(function(p,i){ return [X(i),Y(p.v)]; }));
+    var up=eq[eq.length-1].v>=100;
+    return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Equity of flag Echo in the Armada account, indexed to 100 at the start.">'
+      +'<line x1="0" y1="'+Y(100).toFixed(1)+'" x2="'+W+'" y2="'+Y(100).toFixed(1)
+      +'" stroke="rgba(214,230,240,.26)" stroke-width="1" stroke-dasharray="5 5"/>'
+      +'<path d="'+d+'" fill="none" stroke="'+(up?'#45C29A':'#E8715F')+'" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>'
+      +'</svg>';
+  }
+
+  function waiting(strat, msg){
+    var sym = strat && strat.symbols ? esc(strat.symbols) : '';
+    return '<p class="arm-note"><b>Not trading yet.</b> '+esc(msg)+
+      (sym?' Planned symbol: <code>'+sym+'</code>.':'')+
+      ' This panel fills in on its own once the first trades are closed.</p>';
+  }
+
+  function render(data){
+    var strats = data.strategies || [];
+    var strat = null, i;
+    for(i=0;i<strats.length;i++) if(strats[i].flag==='E') strat=strats[i];
+    var scopes = data.scopes || [], sc = null;
+    for(i=0;i<scopes.length;i++) if(scopes[i].flag==='E') sc=scopes[i];
+
+    $('arm-flag').innerHTML = '<svg viewBox="0 0 60 40" aria-hidden="true">'+FLAG_E+'</svg>';
+    $('arm-name').textContent = strat && strat.name ? strat.name : 'Echo';
+    $('arm-sub').textContent = strat && strat.style ? strat.style : 'Adaptive state-space filter';
+
+    var acc = data.account || {};
+    if(acc.type === 'demo'){ $('arm-badge').hidden = false; }
+
+    if(data.updated_utc){
+      $('arm-upd').textContent = 'Published ' + esc(data.updated_utc.replace('T',' ').replace('Z',' UTC'));
+    }
+
+    if(!sc || !sc.trades || !sc.trades.trades){
+      $('arm-body').innerHTML = waiting(strat, strat && strat.status==='yard'
+        ? 'The bot is registered in the fleet and has not been hoisted yet.'
+        : 'No closed trades published for this flag so far.');
+      return;
+    }
+
+    var t = sc.trades || {}, r = sc.returns || {}, k = sc.risk || {};
+    var net = r.total_pct;
+    $('arm-body').innerHTML =
+      '<div class="arm-grid">'
+      + '<div><b class="'+(nil(net)?'':(net>0?'pos':(net<0?'neg':'')))+'">'+pct(net)+'</b><span>Return since start</span></div>'
+      + '<div><b>'+(nil(t.trades)?'—':t.trades)+'</b><span>Closed trades</span></div>'
+      + '<div><b>'+upct(t.win_rate_pct)+'</b><span>Winning trades</span></div>'
+      + '<div><b>'+num(t.profit_factor)+'</b><span>Profit factor</span></div>'
+      + '<div><b>'+(nil(k.max_drawdown_pct)?'—':'−'+k.max_drawdown_pct.toFixed(2)+'%')+'</b><span>Max drawdown</span></div>'
+      + '</div>'
+      + (sc.equity && sc.equity.length>1 ? '<div class="arm-chart">'+chart(sc.equity)+'</div>' : '');
+  }
+
+  function fail(){
+    $('arm-body').innerHTML = '<p class="arm-note">The live record could not be loaded right now. '
+      + 'It is published at <a href="https://jsgaston.github.io/armada/">the Armada page</a>.</p>';
+  }
+
+  if(!window.fetch){ fail(); return; }
+  fetch(URL+'?t='+Date.now(), {cache:'no-store'})
+    .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(render)
+    .catch(fail);
+})();
+</script>
 
 </body>
 </html>
