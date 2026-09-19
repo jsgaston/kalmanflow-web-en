@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KalmanFlow Pro &mdash; an adaptive state-space filter for MetaTrader 5</title>
+<meta name="description" content="An MT5 expert advisor that re-estimates its own filter from your chart data every day, detects when the model has broken within a few bars, and reads the volatility regime before it decides whether to trade.">
+<meta name="theme-color" content="#06141F">
+<meta property="og:title" content="KalmanFlow Pro &mdash; an adaptive state-space filter for MetaTrader 5">
+<meta property="og:description" content="It separates the price from the noise, re-learns its own parameters as the market changes, and stops when the model stops fitting.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://wisfli.com/kalmanflow/">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%2306141F'/><path d='M3 24 L9 14 L15 19 L21 8 L29 12' fill='none' stroke='%2345C29A' stroke-width='3'/><circle cx='21' cy='8' r='3' fill='%23E0A92C'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..900&family=Spectral:ital,wght@0,300;0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --abyss:#06141F; --abyss-2:#0A2130; --sea:#0F2C42; --chart:#E4EAE8; --panel:#F7F9F8;
+  --ink:#0F2C42; --ink-2:#34506A; --muted:#607487;
+  --rule:rgba(15,44,66,.14); --rule-2:rgba(15,44,66,.3);
+  --drule:rgba(214,230,240,.13); --drule-2:rgba(214,230,240,.26);
+  --dtext:#DCE6EC; --dmuted:#8DA4B4;
+  --brass:#E0A92C; --brass-2:#F0BD48;
+  --up:#1E6B57; --down:#BE3A2B; --sig:#45C29A; --sig-down:#E8715F;
+  --maxw:1200px;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;scroll-padding-top:74px}
+body{margin:0;background:var(--chart);color:var(--ink);font:400 17.5px/1.68 Spectral,Georgia,serif;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4,nav,button,summary,table,.ui{font-family:Archivo,system-ui,sans-serif}
+a{color:inherit;text-underline-offset:3px;text-decoration-thickness:1px}
+:focus-visible{outline:2px solid var(--brass);outline-offset:3px}
+img{max-width:100%;height:auto;display:block}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px}
+.skip{position:absolute;left:-999px;top:0;background:var(--brass);color:#1A1206;padding:8px 14px;font-family:Archivo;z-index:99}
+.skip:focus{left:12px;top:12px}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-size:.9em}
+
+/* nav */
+.top{position:sticky;top:0;z-index:50;background:rgba(6,20,31,.92);backdrop-filter:saturate(140%) blur(10px);-webkit-backdrop-filter:saturate(140%) blur(10px);border-bottom:1px solid var(--drule)}
+.top .wrap{display:flex;align-items:center;justify-content:space-between;height:62px;gap:20px}
+.brand{display:flex;align-items:center;gap:11px;text-decoration:none;color:#fff;font:700 16px Archivo;font-stretch:122%;letter-spacing:.09em;white-space:nowrap}
+.brand svg{width:27px;height:18px;display:block}
+.brand .prod{font-stretch:100%;letter-spacing:0;font-weight:500;color:var(--dmuted)}
+.top nav{display:flex;align-items:center;gap:24px;font-size:14.5px}
+.top nav a{text-decoration:none;color:var(--dmuted);font-weight:500;white-space:nowrap}
+.top nav a:hover{color:#fff}
+.top nav a.pill{color:#1A1206;background:var(--brass);padding:8px 18px;font-weight:700}
+.top nav a.pill:hover{background:var(--brass-2)}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:10px;font:700 16px Archivo;text-decoration:none;padding:15px 26px;border:1px solid transparent;cursor:pointer;transition:background .15s,border-color .15s}
+.btn.brass{background:var(--brass);color:#1A1206}
+.btn.brass:hover{background:var(--brass-2)}
+.btn.line{color:#fff;border-color:var(--drule-2)}
+.btn.line:hover{border-color:#fff}
+.btn.ink{background:var(--sea);color:#EEF3F1}
+.btn.ink:hover{background:#17405E}
+.btn.ghost{color:var(--ink);border-color:var(--rule-2)}
+.btn.ghost:hover{border-color:var(--ink)}
+.actions{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
+.aside{font:500 13.5px Archivo;color:var(--dmuted)}
+
+/* hero */
+.hero{position:relative;background:var(--abyss);color:var(--dtext);overflow:hidden;isolation:isolate}
+.hero::before{content:"";position:absolute;inset:0;z-index:-1;opacity:.55;
+  background-image:linear-gradient(var(--drule) 1px,transparent 1px),linear-gradient(90deg,var(--drule) 1px,transparent 1px);
+  background-size:64px 64px;background-position:-1px -1px;
+  mask-image:radial-gradient(ellipse 90% 80% at 70% 40%,#000 25%,transparent 75%);
+  -webkit-mask-image:radial-gradient(ellipse 90% 80% at 70% 40%,#000 25%,transparent 75%)}
+.hero > .wrap{display:grid;grid-template-columns:1.05fr .95fr;gap:64px;align-items:center;padding-top:92px;padding-bottom:100px}
+.where{font:500 14px Archivo;color:var(--dmuted);margin:0 0 26px;display:flex;align-items:center;gap:10px}
+.where i{display:block;width:26px;height:1px;background:var(--brass);flex:none}
+.hero h1{margin:0 0 28px;color:#fff;font-weight:800;font-stretch:110%;font-size:clamp(42px,5.6vw,80px);line-height:.98;letter-spacing:-.025em}
+.hero h1.long{font-size:clamp(34px,4.1vw,56px);line-height:1.04}
+.lede{font-size:20.5px;line-height:1.55;color:#BCCDD8;max-width:31em;margin:0 0 20px;font-weight:300}
+.lede + .actions,.lede:last-of-type{margin-bottom:38px}
+
+.instrument{background:linear-gradient(180deg,rgba(15,44,66,.72),rgba(10,33,48,.9));border:1px solid var(--drule-2);box-shadow:0 30px 80px -30px rgba(0,0,0,.7)}
+.instrument header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px;border-bottom:1px solid var(--drule)}
+.instrument header b{font:700 15px Archivo;color:#fff;font-stretch:112%;letter-spacing:.02em}
+.instrument header span{font:500 12.5px Archivo;color:var(--dmuted)}
+.badge{font:700 11px Archivo;letter-spacing:.04em;color:#1A1206;background:var(--brass);padding:2px 7px;margin-left:8px;vertical-align:2px}
+.inst-big{padding:22px 20px 0;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.inst-big .num{font:800 54px/1 Archivo;font-stretch:108%;color:#fff;letter-spacing:-.02em}
+.inst-big .lab{font:500 13.5px Archivo;color:var(--dmuted)}
+.inst-chart{height:180px;padding:10px 0 0}
+.inst-chart svg{display:block;width:100%;height:100%}
+.inst-fig{padding:18px 20px 6px}
+.inst-fig svg{display:block;width:100%;height:auto}
+.inst-grid{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--drule);margin:0}
+.inst-grid div{padding:14px 16px 16px;border-right:1px solid var(--drule)}
+.inst-grid div:last-child{border-right:0}
+.inst-grid dt{font:500 12px Archivo;color:var(--dmuted);margin:0 0 3px}
+.inst-grid dd{font:700 20px Archivo;color:#fff;margin:0;white-space:nowrap}
+.inst-foot{padding:12px 20px;border-top:1px solid var(--drule);font:400 12.5px/1.5 Archivo;color:var(--dmuted);margin:0}
+.draw{stroke-dasharray:var(--len);stroke-dashoffset:var(--len);animation:draw 1.8s .25s cubic-bezier(.6,.05,.25,1) forwards}
+.fade{opacity:0;animation:fadein .8s 1.5s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes fadein{to{opacity:1}}
+
+/* principles strip */
+.principles{background:var(--abyss-2);color:var(--dtext);border-top:1px solid var(--drule)}
+.principles .wrap{display:grid;grid-template-columns:repeat(3,1fr)}
+.principles div{padding:34px 34px 36px 0;margin-right:34px;border-right:1px solid var(--drule)}
+.principles div:last-child{border-right:0;margin-right:0}
+.principles h3{margin:0 0 6px;font-size:18px;font-weight:700;color:#fff;font-stretch:106%}
+.principles p{margin:0;font-size:15.5px;color:var(--dmuted);line-height:1.6}
+
+/* sections */
+section{padding:108px 0}
+section.panel{background:var(--panel);border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+section.dark{background:var(--abyss);color:var(--dtext)}
+.head{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:end;margin-bottom:54px}
+.head.solo{grid-template-columns:1fr;max-width:52em}
+h2{margin:0;font-size:clamp(34px,4.3vw,58px);line-height:1.02;font-weight:800;font-stretch:108%;letter-spacing:-.02em}
+.head p{margin:0;color:var(--ink-2);font-size:18px;max-width:36em}
+.dark h2,.dark h3{color:#fff}
+.dark .head p,.dark p{color:#B4C6D2}
+h3{font-size:20px;line-height:1.25;margin:0 0 8px;font-weight:700}
+.prose p{max-width:40em;margin:0 0 18px}
+.prose p:last-child{margin-bottom:0}
+.dark a{color:#fff}
+
+/* features */
+.feat-grid{display:grid;grid-template-columns:.9fr 1.1fr;gap:56px;align-items:start}
+.art{margin:0;background:var(--sea);border:1px solid var(--rule);position:sticky;top:96px}
+.art svg{display:block;width:100%;height:auto}
+.art figcaption{padding:12px 18px;font:500 13px Archivo;color:var(--dmuted);border-top:1px solid var(--drule);background:var(--abyss-2)}
+.feats > div{padding:26px 0;border-top:1px solid var(--rule-2)}
+.feats > div:last-child{border-bottom:1px solid var(--rule-2)}
+.feats p{margin:0;color:var(--ink-2);font-size:16.5px}
+.cols-2{display:grid;grid-template-columns:1fr 1fr;gap:48px}
+.cols-3{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:56px;border-top:1px solid var(--rule-2)}
+.cols-3 > div{padding:26px 28px 0 0;margin-right:28px;border-right:1px solid var(--rule)}
+.cols-3 > div:last-child{border-right:0;margin-right:0}
+.cols-3 p{margin:0;font-size:16px;color:var(--ink-2)}
+.dark .cols-3{border-color:var(--drule-2)}
+.dark .cols-3 > div{border-color:var(--drule)}
+.dark .cols-3 p{color:var(--dmuted)}
+
+/* data boards */
+.board{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--drule-2);background:rgba(15,44,66,.35);margin:0 0 40px}
+.board div{padding:22px 22px 24px;border-right:1px solid var(--drule)}
+.board div:last-child{border-right:0}
+.board b{display:block;font:800 40px/1 Archivo;color:#fff;font-stretch:106%;letter-spacing:-.02em}
+.board span{display:block;font:500 13px Archivo;color:var(--dmuted);margin-top:8px}
+section:not(.dark) .board{background:var(--abyss)}
+
+table.data{width:100%;border-collapse:collapse;font-size:15.5px}
+table.data caption{text-align:left;font:700 15px Archivo;padding:0 0 12px;color:inherit}
+table.data th,table.data td{text-align:left;padding:13px 16px 13px 0;border-top:1px solid var(--rule);vertical-align:top}
+table.data thead th{font-size:13px;font-weight:600;color:var(--muted);border-top:0;border-bottom:1px solid var(--rule-2);padding-bottom:10px}
+table.data tbody tr:last-child td,table.data tbody tr:last-child th{border-bottom:1px solid var(--rule)}
+table.data td.v{text-align:right;font-weight:700;white-space:nowrap;padding-right:0}
+table.data tbody th{font-weight:500;color:var(--muted);width:38%}
+.dark table.data th,.dark table.data td{border-color:var(--drule)}
+.dark table.data thead th{color:var(--dmuted);border-color:var(--drule-2)}
+.dark table.data td{color:var(--dtext)}
+.dark table.data td.v{color:#fff}
+.dark table.data caption{color:#fff}
+.table-scroll{overflow-x:auto}
+
+.spec{display:grid;grid-template-columns:1fr 1fr;column-gap:56px;border-top:1px solid var(--rule-2)}
+.spec div{display:flex;justify-content:space-between;gap:24px;padding:15px 0;border-bottom:1px solid var(--rule)}
+.spec dt{color:var(--muted);font:500 15px Archivo}
+.spec dd{margin:0;font:600 15px Archivo;text-align:right}
+
+.caveat{border-left:3px solid var(--brass);background:rgba(224,169,44,.08);padding:26px 30px;margin:40px 0 0;max-width:62em}
+.caveat h3{margin-top:0}
+.caveat p{margin:0 0 14px;font-size:16.5px}
+.caveat p:last-child{margin-bottom:0}
+.dark .caveat{background:rgba(224,169,44,.07)}
+.dark .caveat p{color:#C9D8E1}
+
+pre{background:var(--abyss);color:#DCE6EC;border:1px solid var(--drule-2);padding:22px 24px;overflow-x:auto;font:400 14px/1.65 "IBM Plex Mono",ui-monospace,monospace;margin:28px 0 10px}
+.dark pre{background:#030C13}
+pre .c{color:#6F8797} pre .k{color:#F0BD48} pre .s{color:#45C29A}
+.code-caption{font:400 13.5px/1.55 Archivo;color:var(--muted);margin:0 0 30px;max-width:56em}
+.dark .code-caption{color:var(--dmuted)}
+
+/* pricing */
+.plans{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:stretch}
+.plan{background:var(--panel);border:1px solid var(--rule);padding:38px 36px 34px;display:flex;flex-direction:column;position:relative}
+.plan h3{font-size:22px;margin:0 0 6px}
+.plan .who{margin:0 0 22px;color:var(--ink-2);font-size:16px}
+.plan .price{font:800 58px/1 Archivo;font-stretch:106%;letter-spacing:-.02em;margin:0 0 8px}
+.plan .price small,.plan .price em{font:500 16px Archivo;color:var(--muted);font-style:normal;letter-spacing:0}
+.plan .was{font:500 13.5px Archivo;color:var(--muted);margin:0 0 24px}
+.plan ul{list-style:none;margin:0 0 28px;padding:0;font:15.5px/1.5 Archivo}
+.plan li{padding:9px 0 9px 26px;border-top:1px solid var(--rule);position:relative}
+.plan li::before{content:"";position:absolute;left:2px;top:17px;width:10px;height:5px;border-left:2px solid var(--up);border-bottom:2px solid var(--up);transform:rotate(-45deg)}
+.plan .pay-slot{margin-top:auto;min-height:56px}
+.plan.pick{background:var(--abyss);color:var(--dtext);border-color:var(--abyss)}
+.plan.pick h3,.plan.pick .price{color:#fff}
+.plan.pick .who{color:#B4C6D2}
+.plan.pick .price small,.plan.pick .price em,.plan.pick .was{color:var(--dmuted)}
+.plan.pick li{border-color:var(--drule)}
+.plan.pick li::before{border-color:var(--sig)}
+.plan .tag{position:absolute;top:-1px;right:28px;transform:translateY(-50%);background:var(--brass);color:#1A1206;font:700 12.5px Archivo;padding:5px 12px}
+.hint{font:400 14.5px/1.6 Archivo;color:var(--muted);margin:26px 0 0;max-width:60em}
+
+/* steps: real sequences only */
+ol.steps{list-style:none;counter-reset:st;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,1fr);gap:0 56px}
+ol.steps li{counter-increment:st;position:relative;padding:26px 0 26px 64px;border-top:1px solid var(--rule-2)}
+ol.steps li::before{content:counter(st);position:absolute;left:0;top:22px;font:800 38px/1 Archivo;font-stretch:108%;color:var(--brass)}
+ol.steps li b,ol.steps li strong:first-child{display:block;font:700 18px/1.3 Archivo;margin:0 0 6px}
+ol.steps li p{margin:0;color:var(--ink-2);font-size:16px}
+ol.steps li{font-size:16px;color:var(--ink-2)}
+
+/* faq */
+.faq-list{border-top:1px solid var(--rule-2);max-width:880px}
+details{border-bottom:1px solid var(--rule-2)}
+summary{list-style:none;cursor:pointer;padding:22px 48px 22px 0;font:600 18.5px/1.35 Archivo;position:relative}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"";position:absolute;right:8px;top:50%;width:14px;height:14px;margin-top:-7px;
+  background:linear-gradient(currentColor,currentColor) center/14px 2px no-repeat,linear-gradient(currentColor,currentColor) center/2px 14px no-repeat;transition:transform .2s}
+details[open] summary::after{transform:rotate(45deg)}
+summary:hover{color:var(--up)}
+details p{margin:0 0 24px;max-width:46em;color:var(--ink-2)}
+details code{background:rgba(15,44,66,.07);padding:1px 5px}
+
+/* contact strip */
+.contact{background:var(--brass);color:#1A1206;padding:72px 0}
+.contact .wrap{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center}
+.contact h2{font-size:clamp(30px,3.6vw,46px)}
+.contact p{margin:0;font-size:18px}
+.contact a.mail{font:700 20px Archivo;word-break:break-word}
+
+/* footer */
+footer{background:var(--abyss);color:var(--dmuted);font:14px/1.6 Archivo;padding:72px 0 56px}
+footer .cols{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:48px;padding-bottom:44px;border-bottom:1px solid var(--drule)}
+footer h4{margin:0 0 14px;color:#fff;font-size:14px;font-weight:600}
+footer ul{list-style:none;margin:0;padding:0}
+footer li{margin:0 0 8px}
+footer a{text-decoration:none;color:var(--dtext)}
+footer a:hover{color:#fff;text-decoration:underline}
+footer .brand{margin-bottom:16px}
+footer .legal{padding-top:28px;font-size:12.5px;color:#6F8797}
+footer .legal p{margin:0 0 10px;max-width:74em}
+footer .legal strong{color:var(--dmuted)}
+
+@media (max-width:1040px){
+  .hero > .wrap{grid-template-columns:1fr;gap:56px;padding-top:70px;padding-bottom:80px}
+  .feat-grid{grid-template-columns:1fr;gap:36px}
+  .art{position:static}
+  .top nav a.opt{display:none}
+}
+@media (max-width:760px){
+  body{font-size:16.5px}
+  .wrap{padding:0 20px}
+  .top nav a:not(.pill){display:none}
+  .brand .prod{display:none}
+  section{padding:72px 0}
+  .head{grid-template-columns:1fr;gap:16px;margin-bottom:36px}
+  .principles .wrap,.cols-2,.cols-3,.plans,.spec,ol.steps,.contact .wrap,footer .cols{grid-template-columns:1fr}
+  .principles div{border-right:0;margin-right:0;padding:24px 0;border-bottom:1px solid var(--drule)}
+  .principles div:last-child{border-bottom:0}
+  .cols-3 > div{border-right:0;margin-right:0;padding:22px 0;border-bottom:1px solid var(--rule)}
+  .cols-2{gap:28px}
+  .inst-grid,.board{grid-template-columns:repeat(2,1fr)}
+  .inst-grid div:nth-child(2),.board div:nth-child(2){border-right:0}
+  .inst-grid div:nth-child(-n+2),.board div:nth-child(-n+2){border-bottom:1px solid var(--drule)}
+  .inst-big .num{font-size:44px}
+  .board b{font-size:32px}
+  .plan{padding:30px 24px}
+  .plan .price{font-size:48px}
+  ol.steps li{padding-left:52px}
+  .contact{padding:56px 0}
+  .contact .wrap{gap:18px}
+  footer .cols{gap:32px}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *{animation:none!important;transition:none!important}
+  .draw{stroke-dashoffset:0}.fade{opacity:1}
+}
+
+/* page-specific */
+.mode{display:inline-block;width:10px;height:10px;margin-right:10px;vertical-align:0}
+.mode.up{background:var(--sig)} .mode.flat{background:#8DA4B4} .mode.down{background:var(--sig-down)}
+.default{font:600 11.5px Archivo;color:#1A1206;background:var(--brass);padding:1px 6px;margin-left:6px;vertical-align:2px}
+.code-grid pre{margin-top:22px}
+.shots figure{margin:0;background:var(--abyss-2);border:1px solid var(--drule-2)}
+.shots img{width:100%;background:#fff}
+.shots figcaption{padding:14px 18px;font:400 13.5px/1.55 Archivo;color:var(--dmuted)}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="https://wisfli.com/"><svg viewBox="0 0 60 40" aria-hidden="true"><path d="M0 0h60v40H0z" fill="#14528C"/><path d="M8 8h44v24H8z" fill="#fff"/><path d="M18 14h24v12H18z" fill="#C8322A"/></svg>WISFLI <span class="prod">/ KalmanFlow Pro</span></a>
+    <nav aria-label="Page">
+      <a href="#how">How it works</a>
+      <a href="#learning">Re-learning</a>
+      <a href="#scope" class="opt">Markets</a>
+      <a href="#results">Test results</a>
+      <a href="#faq" class="opt">Questions</a>
+      <a class="pill" href="#pricing">Buy</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+<div class="hero">
+  <div class="wrap">
+    <div>
+      <p class="where"><i></i>Adaptive state-space filter for MetaTrader 5</p>
+      <h1 class="long">It re-estimates its own model as the market moves, and notices within a few bars when that model has broken.</h1>
+      <p class="lede">Most robots read indicators whose settings were chosen once and never change. KalmanFlow Pro estimates two things directly from your own chart data &mdash; where the price actually is, once the noise is removed, and how fast it is moving &mdash; and re-fits the parameters that control that estimate on a rolling window, by maximum likelihood, without you tuning anything.</p>
+      <p class="lede">On top of that sit two filters with deliberately different speeds: a change point test that reacts in a few bars when the price stops behaving like the model says it should, and a three-state regime model that decides how much size the conditions deserve.</p>
+      <div class="actions">
+        <a class="btn brass" href="#pricing">See pricing</a>
+        <a class="btn line" href="#results">Read the test report</a>
+      </div>
+      <p class="aside" style="margin:18px 0 0">MetaTrader 5, one licence for up to three accounts</p>
+    </div>
+
+    <aside class="instrument" aria-label="What the filter produces">
+      <header><b>Filtered level<span class="badge">LIVE ESTIMATE</span></b><span>Illustration</span></header>
+      <figure class="inst-fig" style="margin:0;--flat:#8DA4B4;--up:#45C29A;--down:#E8715F;--ink:#DCE6EC;--muted:#8DA4B4">
+<svg viewBox="0 0 960 300" role="img" aria-label="A noisy price line with the filtered level drawn through it, and a dashed marker where the change point test fires after an abrupt break." xmlns="http://www.w3.org/2000/svg">
+  <style>.rl{font-family:Archivo,sans-serif;font-size:19px;fill:var(--muted)}</style>
+  <path d="M18.0 202.3 21.9 195.5 25.7 190.0 29.6 184.6 33.5 175.3 37.3 178.4 41.2 179.0 45.1 182.6 48.9 180.8 52.8 174.2 56.7 172.1 60.5 167.7 64.4 174.0 68.3 171.1 72.1 172.9 76.0 162.9 79.9 156.7 83.7 150.3 87.6 148.4 91.5 143.5 95.3 138.4 99.2 137.7 103.1 137.7 106.9 136.0 110.8 136.4 114.7 136.9 118.5 135.9 122.4 136.9 126.3 131.3 130.1 136.2 134.0 130.3 137.8 130.9 141.7 131.1 145.6 134.8 149.4 133.3 153.3 132.1 157.2 129.1 161.0 129.2 164.9 126.6 168.8 116.4 172.6 112.4 176.5 112.7 180.4 106.3 184.2 104.6 188.1 99.8 192.0 94.9 195.8 94.4 199.7 100.7 203.6 100.1 207.4 95.4 211.3 94.9 215.2 90.8 219.0 84.2 222.9 84.4 226.8 76.8 230.6 67.4 234.5 60.5 238.4 53.1 242.2 46.1 246.1 33.9 250.0 30.9 253.8 28.7 257.7 23.8 261.6 25.6 265.4 30.3 269.3 31.9 273.2 28.1 277.0 23.8 280.9 28.4 284.8 34.5 288.6 35.9 292.5 36.7 296.4 36.9 300.2 33.9 304.1 28.5 308.0 27.5 311.8 24.8 315.7 29.6 319.6 34.8 323.4 33.8 327.3 30.9 331.2 27.6 335.0 25.0 338.9 21.6 342.8 18.0 346.6 25.7 350.5 29.0 354.4 27.0 358.2 24.3 362.1 31.0 365.9 25.8 369.8 27.8 373.7 28.8 377.5 27.6 381.4 24.3 385.3 30.6 389.1 26.2 393.0 25.9 396.9 29.3 400.7 30.5 404.6 40.1 408.5 43.0 412.3 42.2 416.2 45.3 420.1 46.8 423.9 47.4 427.8 47.2 431.7 42.7 435.5 42.8 439.4 44.0 443.3 41.6 447.1 32.4 451.0 33.9 454.9 31.7 458.7 38.6 462.6 32.7 466.5 29.8 470.3 23.9 474.2 24.2 478.1 28.8 481.9 24.9 485.8 21.5 489.7 25.4 493.5 31.9 497.4 29.9 501.3 30.6 505.1 19.1 509.0 21.8 512.9 24.2 516.7 24.6 520.6 32.0 524.5 35.9 528.3 70.0 532.2 70.6 536.1 73.3 539.9 78.9 543.8 76.3 547.7 73.4 551.5 72.3 555.4 74.0 559.3 74.5 563.1 74.6 567.0 79.4 570.9 78.4 574.7 89.5 578.6 97.0 582.5 100.1 586.3 102.4 590.2 109.3 594.1 109.7 597.9 106.8 601.8 106.6 605.6 107.4 609.5 105.6 613.4 105.6 617.2 112.4 621.1 115.1 625.0 111.2 628.8 118.0 632.7 119.5 636.6 123.0 640.4 128.8 644.3 135.0 648.2 136.4 652.0 136.8 655.9 137.2 659.8 145.4 663.6 148.5 667.5 148.7 671.4 146.3 675.2 145.2 679.1 143.3 683.0 140.2 686.8 138.4 690.7 143.8 694.6 145.3 698.4 150.3 702.3 162.6 706.2 171.8 710.0 164.3 713.9 171.1 717.8 182.7 721.6 187.1 725.5 182.2 729.4 184.2 733.2 184.2 737.1 187.2 741.0 189.3 744.8 185.5 748.7 183.8 752.6 186.0 756.4 183.9 760.3 180.9 764.2 183.7 768.0 184.3 771.9 184.9 775.8 189.7 779.6 186.4 783.5 188.9 787.4 193.4 791.2 202.6 795.1 210.0 799.0 205.1 802.8 211.9 806.7 211.8 810.6 215.2 814.4 214.7 818.3 213.9 822.2 219.1 826.0 222.2 829.9 223.5 833.7 224.8 837.6 226.7 841.5 229.9 845.3 228.9 849.2 224.9 853.1 224.3 856.9 229.4 860.8 229.4 864.7 230.9 868.5 230.7 872.4 224.3 876.3 227.1 880.1 228.9 884.0 234.6 887.9 237.7 891.7 242.0 895.6 236.7 899.5 237.2 903.3 241.5 907.2 234.8 911.1 242.4 914.9 240.4 918.8 237.7 922.7 237.0 926.5 239.9 930.4 242.3 934.3 245.6 938.1 243.9 942.0 256.0" fill="none" stroke="var(--muted)" stroke-width="1.6" opacity=".55"/>
+  <path d="M18.0 202.3 21.9 195.5 25.7 189.8 29.6 184.4 33.5 176.2 37.3 175.8 41.2 177.2 45.1 181.0 48.9 181.5 52.8 176.6 56.7 172.7 60.5 168.2 64.4 171.2 68.3 171.2 72.1 172.4 76.0 165.8 79.9 158.2 83.7 150.8 87.6 147.1 91.5 143.1 95.3 138.5 99.2 136.6 103.1 136.6 106.9 135.8 110.8 136.0 114.7 136.5 118.5 136.1 122.4 136.6 126.3 132.9 130.1 134.6 134.0 131.6 137.8 130.6 141.7 130.6 145.6 133.5 149.4 133.8 153.3 132.8 157.2 130.1 161.0 129.0 164.9 126.9 168.8 118.8 172.6 112.6 176.5 111.0 180.4 106.7 184.2 104.1 188.1 100.2 192.0 95.4 195.8 93.5 199.7 97.9 203.6 99.9 207.4 97.2 211.3 95.3 215.2 91.6 219.0 85.5 222.9 83.4 226.8 77.7 230.6 69.0 234.5 60.9 238.4 53.1 242.2 45.9 246.1 35.2 250.0 29.4 253.8 26.9 257.7 23.4 261.6 23.9 265.4 28.1 269.3 31.5 273.2 29.8 277.0 25.5 280.9 26.8 284.8 32.3 288.6 35.8 292.5 37.4 296.4 37.7 300.2 35.3 304.1 30.2 308.0 27.2 311.8 24.6 315.7 27.4 319.6 32.9 323.4 34.6 327.3 32.6 331.2 29.0 335.0 25.5 338.9 21.8 342.8 18.1 346.6 22.6 350.5 27.5 354.4 28.1 358.2 25.9 362.1 29.4 365.9 27.3 369.8 27.5 373.7 28.4 377.5 28.0 381.4 25.3 385.3 28.6 389.1 27.3 393.0 26.2 396.9 28.2 400.7 30.1 404.6 37.7 408.5 43.0 412.3 43.9 416.2 45.7 420.1 47.0 423.9 47.8 427.8 47.7 431.7 44.2 435.5 42.7 439.4 43.1 443.3 41.9 447.1 34.9 451.0 32.9 454.9 31.2 458.7 35.9 462.6 34.2 466.5 31.0 470.3 25.3 474.2 23.3 478.1 26.4 481.9 25.5 485.8 22.6 489.7 24.0 493.5 29.7 497.4 30.8 501.3 31.3 505.1 22.8 509.0 20.8 512.9 22.3 516.7 23.9 520.6 30.0 524.5 35.4 528.3 61.6 532.2 70.7 536.1 73.5 539.9 78.5 543.8 78.0 547.7 75.1 551.5 72.8 555.4 73.1 559.3 73.9 563.1 74.5 567.0 78.1 570.9 79.0 574.7 87.0 578.6 95.7 582.5 101.0 586.3 103.8 590.2 108.9 594.1 110.8 597.9 108.8 601.8 107.2 605.6 107.1 609.5 105.9 613.4 105.4 617.2 110.2 621.1 114.5 625.0 113.2 628.8 116.8 632.7 119.4 636.6 122.7 640.4 127.9 644.3 134.3 648.2 137.4 652.0 138.1 655.9 138.0 659.8 143.5 663.6 148.1 667.5 149.7 671.4 148.0 675.2 146.0 679.1 143.7 683.0 140.7 686.8 138.3 690.7 141.5 694.6 144.5 698.4 149.3 702.3 159.9 706.2 170.7 710.0 168.9 713.9 171.2 717.8 180.2 721.6 187.0 725.5 185.4 729.4 185.0 733.2 184.5 737.1 186.4 741.0 188.8 744.8 187.0 748.7 184.6 752.6 185.1 756.4 184.1 760.3 181.6 764.2 182.6 768.0 183.7 771.9 184.8 775.8 188.6 779.6 187.7 783.5 188.7 787.4 192.3 791.2 200.4 795.1 209.0 799.0 208.3 802.8 211.6 806.7 212.6 810.6 215.0 814.4 215.4 818.3 214.6 822.2 217.8 826.0 221.5 829.9 223.8 833.7 225.3 837.6 226.8 841.5 229.5 845.3 229.7 849.2 226.6 853.1 224.5 856.9 227.5 860.8 229.2 864.7 230.9 868.5 231.2 872.4 226.5 876.3 226.2 880.1 227.8 884.0 232.9 887.9 237.3 891.7 241.8 895.6 239.4 899.5 237.9 903.3 240.2 907.2 236.6 911.1 240.3 914.9 240.8 918.8 238.9 922.7 237.3 926.5 238.8 930.4 241.4 934.3 244.9 938.1 245.0 942.0 253.2" fill="none" stroke="var(--up)" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"/>
+  <line x1="528.3" y1="18" x2="528.3" y2="266" stroke="var(--down)" stroke-width="2" stroke-dasharray="6 5" opacity=".9"/>
+  <text class="rl" x="537.3" y="42" fill="var(--down)">break</text>
+  <text class="rl" x="24" y="280">price</text>
+  <text class="rl" x="108" y="280" fill="var(--up)">filtered level</text>
+</svg>
+      </figure>
+    </aside>
+  </div>
+</div>
+
+<div class="principles">
+  <div class="wrap">
+    <div>
+      <h3>No parameter you have to guess</h3>
+      <p>The one number that governs how much the filter trusts the price against its own forecast is estimated from the data by maximum likelihood, on a rolling window, and updated daily. There is no period, no multiplier and no threshold for you to optimise into a curve fit.</p>
+    </div>
+    <div>
+      <h3>It can decide not to trade</h3>
+      <p>Two independent brakes. The change point test pauses new entries when the price stops fitting the model. The scoring layer keeps the robot flat whenever neither of its two behaviours has been earning its costs recently.</p>
+    </div>
+    <div>
+      <h3>Costs are in the decision</h3>
+      <p>Every signal is checked against the spread it would have to pay before it is allowed through. On instruments where the spread eats the expected move, the robot simply does not trade, which is the correct answer.</p>
+    </div>
+  </div>
+</div>
+
+<section id="how">
+  <div class="wrap">
+    <div class="head solo">
+      <h2>Three layers, three different speeds</h2>
+      <p>Stacking three models on the same data and the same window gives you one overfitted model with three names. These three look at different things and update at different rates, which is the entire point of the design.</p>
+    </div>
+
+    <div class="cols-2 prose">
+      <div>
+        <h3>The filter, every bar</h3>
+        <p>A local linear trend model runs on the logarithm of the price. It keeps two numbers: the level, which is the price with the noise taken out, and the slope, which is the rate of change per bar. Both come with an honest error bar, so the robot can ask whether a slope is large compared to its own uncertainty rather than compared to an arbitrary threshold.</p>
+        <p>Direction comes from here and only from here.</p>
+      </div>
+      <div>
+        <h3>The change point test, every bar</h3>
+        <p>When the model is correct, the difference between the price and the model's forecast is a standard normal sequence. So a cumulative sum test on that sequence is not a detector of large candles: it is a detector of the model itself breaking. It carries no window and needs no fitting, which is why it is the fast layer.</p>
+        <p>When it fires, the filter's uncertainty is widened so it re-locks onto the new level at once, and new entries pause.</p>
+      </div>
+    </div>
+
+    <div class="table-scroll" style="margin-top:56px">
+      <table class="data">
+        <thead><tr><th>Layer</th><th>What it looks at</th><th>How often it updates</th><th>What it decides</th></tr></thead>
+        <tbody>
+          <tr><td>Kalman filter</td><td>Log price</td><td>Every bar</td><td>Direction and how strong the signal is</td></tr>
+          <tr><td>Parameter fit</td><td>Rolling window of price</td><td>Daily</td><td>How much the filter trusts the price, and the entry thresholds</td></tr>
+          <tr><td>Change point test</td><td>The filter's own forecast errors</td><td>Every bar, no window</td><td>Whether the model still holds</td></tr>
+          <tr><td>Mode scorer</td><td>Realised result of each behaviour, costs included</td><td>Every bar, decays over days</td><td>Trend, reversion, or stay flat</td></tr>
+          <tr><td>Regime model</td><td>Rolling window of returns</td><td>Weekly</td><td>Permission to trade and position size</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="learning" class="dark">
+  <div class="wrap">
+    <div class="head">
+      <h2>What &ldquo;it learns&rdquo; actually means here</h2>
+      <p>The phrase is used loosely by most vendors, so here is the precise version, with the numbers that were measured on the reference implementation rather than claimed.</p>
+    </div>
+
+    <div class="cols-3">
+      <div>
+        <h3>The fit is walk-forward by construction</h3>
+        <p>Every re-estimate reads closed bars only, and the window ends at the bar before the decision. There is no separate walk-forward harness to trust, because no other kind of run is possible: the robot cannot see the bar it is trading.</p>
+      </div>
+      <div>
+        <h3>The estimate is checked, not assumed</h3>
+        <p>With the fitted parameters the model's forecast errors came out with a standard deviation of 1.000 and a first-order autocorrelation of +0.011, which is what a correctly specified filter should produce. The likelihood has a single maximum across the whole search range, so the fit does not land somewhere different each time.</p>
+      </div>
+      <div>
+        <h3>The break detector is calibrated</h3>
+        <p>At its default setting the test raises one false alarm roughly every 510 bars, and detects a genuine two-sigma shift in about three bars, or one bar for a three-sigma shift. Both numbers move together: you can make it quieter or faster, not both.</p>
+      </div>
+    </div>
+
+    <div class="caveat">
+      <h3>And what it does not mean</h3>
+      <p>Re-learning more often is not automatically better. A shorter window re-estimates with more variance, and that is overfitting under a friendlier name. The parameter fit here runs daily but over a long window, so it moves slowly and deliberately. The fast reaction is the change point test's job, not the fitting's.</p>
+      <p>Maximum likelihood also optimises one-step-ahead prediction of the price, which is not the same objective as making money. The filter being well specified is a necessary condition for the robot to work, not a sufficient one.</p>
+    </div>
+  </div>
+</section>
+
+<section id="scope">
+  <div class="wrap">
+    <div class="head">
+      <h2>Where it has been tested, and where it has not</h2>
+      <p>Being straight about this matters more than the list being long.</p>
+    </div>
+
+    <div class="cols-2">
+      <div>
+        <h3>Gold</h3>
+        <p>XAUUSD is the instrument the published report below was run on, and the one the default settings were chosen for. It is where the method has the most room, because the spread is small relative to the daily range.</p>
+      </div>
+      <div>
+        <h3>Crypto</h3>
+        <p>ETHUSD and SOLUSD are in testing and are not sold as supported. The honest reason: crypto spreads at retail brokers are wide enough relative to the range that they consume most of the expected move. The robot has a cost filter that will simply refuse to trade when that is the case.</p>
+      </div>
+    </div>
+
+    <table class="data" style="margin-top:28px">
+      <tbody>
+        <tr><th>Platform</th><td>MetaTrader 5, build 3000 or newer. Hedging or netting.</td></tr>
+        <tr><th>Instrument</th><td>One chart, one symbol, one magic number. Run more than one copy for more than one symbol.</td></tr>
+        <tr><th>Timeframes</th><td>Any. Re-learning cadence scales with the chart period automatically.</td></tr>
+        <tr><th>History needed</th><td>About 2,000 closed bars before the first trade, so the filter and the regime model can be fitted.</td></tr>
+        <tr><th>Account size</th><td>Position size comes from a risk percentage and the ATR stop. If that lands below the broker's minimum lot, the robot tells you and does not trade rather than quietly taking more risk than you asked for.</td></tr>
+        <tr><th>VPS</th><td>Recommended but not required. Decisions are taken on bar close.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="results" class="dark">
+  <div class="wrap">
+    <div class="head">
+      <h2>Strategy Tester report</h2>
+      <p>XAUUSD, eight months of 2026, default settings. Read the caveat underneath before you read anything into these numbers.</p>
+    </div>
+
+    <div class="board">
+      <div><b>1.81</b><span>Profit factor</span></div>
+      <div><b>386</b><span>Trades</span></div>
+      <div><b>43.5%</b><span>Winning trades</span></div>
+      <div><b>2.35</b><span>Average win / average loss</span></div>
+    </div>
+
+    <div class="caveat">
+      <h3>Read this before you read the report</h3>
+      <p>This is a simulation over a single instrument, a single broker's data and eight months. That is one market regime, not a sample. Most of the gain in the run is concentrated in the first third of the period, when gold trended; the remainder is much flatter. A longer test across 2018 to 2024 is in progress and will be published here whether or not it is favourable.</p>
+      <p>There is no live track record for this robot yet. What the run does support is the shape of the thing: the win rate, the ratio between average win and average loss, the trade count, and the fact that the largest single winning trade is under four per cent of the gross profit &mdash; so the result does not rest on one lucky trade. It supports no statement at all about future returns, and none is made anywhere on this page.</p>
+    </div>
+
+    <div class="actions" style="margin-top:36px">
+      <a class="btn line" href="ReportTester-kalmanflow.html">Open the full tester report</a>
+    </div>
+  </div>
+</section>
+
+<section id="pricing" class="panel">
+  <div class="wrap">
+    <div class="head">
+      <h2>Rent it monthly, or buy it once</h2>
+      <p>Both options include the compiled expert advisor, the full input reference, the default configuration used in the published test, and email support from the person who wrote it.</p>
+    </div>
+
+    <div class="plans">
+      <div class="plan">
+        <h3>Monthly</h3>
+        <p class="who">For running it live without committing up front.</p>
+        <p class="price">&euro;39<small> / month</small></p>
+        <p class="was">Cancel any time, from your own Stripe receipt.</p>
+        <ul>
+          <li>Up to three MetaTrader 5 accounts</li>
+          <li>All updates while active</li>
+          <li>Email support</li>
+          <li>Free account transfer</li>
+        </ul>
+        <div class="pay-slot">
+          <!-- TODO Javier: paste the Stripe buy button for the MONTHLY plan here.
+               Nothing renders until the id and key below are the real ones. -->
+          <stripe-buy-button
+            buy-button-id="REPLACE_WITH_MONTHLY_BUY_BUTTON_ID"
+            publishable-key="REPLACE_WITH_STRIPE_PUBLISHABLE_KEY">
+          </stripe-buy-button>
+        </div>
+      </div>
+
+      <div class="plan pick">
+        <span class="tag">Launch price</span>
+        <h3>Lifetime licence</h3>
+        <p class="who">For traders who have run it on demo and want to keep it.</p>
+        <p class="price">&euro;349<small> once</small></p>
+        <p class="was">Going up once the published 2018&ndash;2024 test is finished.</p>
+        <ul>
+          <li>Up to three MetaTrader 5 accounts, no expiry</li>
+          <li>All version 1.x updates included</li>
+          <li>Priority email support</li>
+          <li>Free account transfer</li>
+        </ul>
+        <div class="pay-slot">
+          <!-- TODO Javier: paste the Stripe buy button for the LIFETIME plan here. -->
+          <stripe-buy-button
+            buy-button-id="REPLACE_WITH_LIFETIME_BUY_BUTTON_ID"
+            publishable-key="REPLACE_WITH_STRIPE_PUBLISHABLE_KEY">
+          </stripe-buy-button>
+        </div>
+      </div>
+    </div>
+
+    <p class="hint">Your licence key works on up to three MetaTrader 5 account numbers, demo or live. The robot checks the key when it starts and every few hours after that; short internet outages are tolerated. Changing broker or account is free: write in and the key is reissued. The expert advisor arrives by email with your key, normally within a few hours and always within one working day.</p>
+  </div>
+</section>
+
+<section id="start">
+  <div class="wrap">
+    <div class="head solo"><h2>From payment to first signal</h2></div>
+    <ol class="steps">
+      <li><b>Pay</b><p>Checkout is Stripe. You will receive an email with the expert advisor attached and your licence key.</p></li>
+      <li><b>Install and allow the licence check</b><p>Drop the file into <code>MQL5/Experts</code>, restart MetaTrader, then add <code>https://api.wisfli.com</code> under Tools &rarr; Options &rarr; Expert Advisors so the key can be verified.</p></li>
+      <li><b>Backtest it yourself first</b><p>The Strategy Tester needs no key at all. Run it on your own broker's data and your own spread before you put money behind it, because the spread is what decides whether this method works on a given instrument.</p></li>
+      <li><b>Run it on demo</b><p>Attach it to a chart, enter your key, set the risk percentage. Leave it on demo long enough to see it sit out a quiet stretch, because that is a feature and it looks like nothing happening.</p></li>
+    </ol>
+  </div>
+</section>
+
+<section id="faq" class="panel">
+  <div class="wrap">
+    <div class="head solo"><h2>Questions</h2></div>
+    <div class="faq-list">
+      <details>
+        <summary>Do I need to understand what a Kalman filter is?</summary>
+        <p>No. You need to know that the robot estimates the price with the noise stripped out, that it re-fits its own settings from your data rather than from a preset, that it will stop trading when the price stops fitting its model, and that you set the risk. The mathematics is documented for people who want it and ignorable for people who do not.</p>
+      </details>
+      <details>
+        <summary>What do I actually have to configure?</summary>
+        <p>The risk percentage and the stop size in ATR. Everything the filter needs is estimated from the data. The remaining inputs exist so that you can test alternatives, not because they need tuning before it runs.</p>
+      </details>
+      <details>
+        <summary>Will it work on my broker?</summary>
+        <p>It runs on any MetaTrader 5 broker. Whether it is profitable there is a different question, and the spread decides it. Backtest on your own broker's data first: that is free and needs no licence.</p>
+      </details>
+      <details>
+        <summary>Why is it flat so often?</summary>
+        <p>Because it is allowed to be. The scoring layer keeps it out when neither of its behaviours has been covering its costs, and the change point test pauses entries after a break. A robot that is always in the market cannot express the conclusion that there is nothing to do.</p>
+      </details>
+      <details>
+        <summary>Can I run it on several symbols?</summary>
+        <p>Yes, one copy per chart, each with its own magic number. Remember that the risk percentage applies per copy, so three copies at one per cent is three per cent of exposure, not one.</p>
+      </details>
+      <details>
+        <summary>Does it use martingale, grid or averaging down?</summary>
+        <p>No. One position at a time, a stop loss on every trade from the moment it opens, and the size fixed by your risk percentage. It never adds to a losing position.</p>
+      </details>
+      <details>
+        <summary>Is there a free trial?</summary>
+        <p>The Strategy Tester runs without a licence, so you can test it as long as you like before buying. Live and demo accounts both need a key.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section class="contact">
+  <div class="wrap">
+    <h2>Questions the page doesn't answer?</h2>
+    <div>
+      <p>Write to the person who wrote the code. You will get a straight answer about whether it fits your broker, your capital and the way you trade.</p>
+      <p style="margin-top:14px"><a class="mail" href="mailto:support@wisfli.com">support@wisfli.com</a></p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div>
+        <a class="brand" href="https://wisfli.com/"><svg viewBox="0 0 60 40" aria-hidden="true"><path d="M0 0h60v40H0z" fill="#14528C"/><path d="M8 8h44v24H8z" fill="#fff"/><path d="M18 14h24v12H18z" fill="#C8322A"/></svg>WISFLI</a>
+        <p style="margin:0;max-width:26em">KalmanFlow Pro is built and supported by one person in Alicante.</p>
+      </div>
+      <div>
+        <h4>KalmanFlow Pro</h4>
+        <ul>
+          <li><a href="terms.html">Terms and licence</a></li>
+          <li><a href="ReportTester-kalmanflow.html">Strategy Tester report</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Wisfli</h4>
+        <ul>
+          <li><a href="https://wisfli.com/">wisfli.com</a></li>
+          <li><a href="https://jsgaston.github.io/candlegrid-web-en/">CandleGrid Pro</a></li>
+          <li><a href="https://jsgaston.github.io/regimeswitch-web-en/">RegimeSwitch Pro</a></li>
+          <li><a href="https://jsgaston.github.io/armada/">Armada signal</a></li>
+          <li><a href="mailto:support@wisfli.com">Email</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <p>Trading foreign exchange and CFDs on margin carries a high level of risk and can result in the loss of all of your capital. Backtested and simulated results do not represent actual trading and have inherent limitations, including the benefit of hindsight. KalmanFlow Pro has no live track record at the time of writing. Past performance does not indicate future results. KalmanFlow Pro is trading software, not investment advice, and no outcome is promised or implied. Only trade with money you can afford to lose.</p>
+      <p>&copy; <span id="yr">2026</span> Wisfli. Trading as Javier Santiago Gast&oacute;n de Iriarte Cabrera, Tax ID 47033535F, Alicante, Spain.</p>
+    </div>
+  </div>
+</footer>
+
+<script>document.getElementById('yr').textContent = new Date().getFullYear();</script>
+<script src="https://js.stripe.com/v3/buy-button.js" async></script>
+
+</body>
+</html>
