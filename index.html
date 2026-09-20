@@ -615,6 +615,10 @@ footer .legal strong{color:var(--dmuted)}
     <div class="head solo"><h2>Questions</h2></div>
     <div class="faq-list">
       <details>
+        <summary>The EA says it cannot reach the licence server</summary>
+        <p>Nine times out of ten the address is not allowed in MetaTrader. Add <code>https://api.wisfli.com</code> under Tools → Options → Expert Advisors → Allow WebRequest for listed URL, exactly like that, with no trailing slash. Then restart the EA. If it still fails, a firewall or your VPS provider may be blocking outbound HTTPS.</p>
+      </details>
+      <details>
         <summary>Do I need to understand what a Kalman filter is?</summary>
         <p>No. You need to know that the robot estimates the price with the noise stripped out, that it re-fits its own settings from your data rather than from a preset, that it will stop trading when the price stops fitting its model, and that you set the risk. The mathematics is documented for people who want it and ignorable for people who do not.</p>
       </details>
