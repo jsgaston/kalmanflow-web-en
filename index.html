@@ -511,11 +511,11 @@ footer .legal strong{color:var(--dmuted)}
     </div>
 
     <div class="actions" style="margin-bottom:34px">
-      <a class="btn brass" href="KalmanFlowPro_Backtest.ex5" download>Download the free backtest build</a>
+      <a class="btn brass" href="KalmanFlowPro-Backtest.ex5" download>Download the free backtest build</a>
     </div>
 
     <ol class="steps">
-      <li><b>Put the file in place</b><p>Copy <code>KalmanFlowPro_Backtest.ex5</code> into <code>MQL5/Experts</code> inside your terminal's data folder. In MetaTrader: File &rarr; Open Data Folder. Then right-click Expert Advisors in the Navigator and choose Refresh.</p></li>
+      <li><b>Put the file in place</b><p>Copy <code>KalmanFlowPro-Backtest.ex5</code> into <code>MQL5/Experts</code> inside your terminal's data folder. In MetaTrader: File &rarr; Open Data Folder. Then right-click Expert Advisors in the Navigator and choose Refresh.</p></li>
       <li><b>Give it enough history</b><p>It needs roughly 2,000 closed bars before the first trade, so the filter and the regime model can be fitted. On a fresh terminal, open the chart and scroll back once to pull the history down.</p></li>
       <li><b>Use your own costs</b><p>In the Strategy Tester choose Every tick based on real ticks, and set the spread your broker actually charges rather than the fixed default. This matters more than any setting in the robot: the spread decides whether the method works on your instrument at all.</p></li>
       <li><b>Leave the defaults alone on the first run</b><p>Signal mode is already on Auto, and the filter estimates its own parameters from your data. If you want to change something afterwards, change the risk percentage and the stop size in ATR first.</p></li>
@@ -556,55 +556,45 @@ footer .legal strong{color:var(--dmuted)}
 <section id="pricing" class="panel">
   <div class="wrap">
     <div class="head">
-      <h2>Rent it monthly, or buy it once</h2>
-      <p>Both options include the compiled expert advisor, the full input reference, the default configuration used in the published test, and email support from the person who wrote it.</p>
+      <h2>Get KalmanFlow Pro</h2>
+      <p>Monthly or a single payment &mdash; the software is the same either way. VAT is included in both prices, and the invoice is issued automatically.</p>
     </div>
-
     <div class="plans">
-      <div class="plan">
+      <div class="plan pick">
+        <span class="tag">Most people start here</span>
         <h3>Monthly</h3>
-        <p class="who">For running it live without committing up front.</p>
-        <p class="price">&euro;39<small> / month</small></p>
-        <p class="was">Cancel any time, from your own Stripe receipt.</p>
+        <p class="who">The whole system, with updates, for as long as you keep it. Cancel from your own account page whenever you want.</p>
+        <p class="price">&euro;39 <small>/ month</small></p>
+        <p class="was">VAT included &middot; cancel any time</p>
         <ul>
-          <li>Up to three MetaTrader 5 accounts</li>
-          <li>All updates while active</li>
-          <li>Email support</li>
-          <li>Free account transfer</li>
+          <li>Compiled EA delivered by email</li>
+          <li>Licence key valid on three accounts</li>
+          <li>Updates while the subscription is active</li>
+          <li>Setup guide and email support</li>
         </ul>
         <div class="pay-slot">
-          <!-- TODO Javier: paste the Stripe buy button for the MONTHLY plan here.
-               Nothing renders until the id and key below are the real ones. -->
-          <stripe-buy-button
-            buy-button-id="REPLACE_WITH_MONTHLY_BUY_BUTTON_ID"
-            publishable-key="REPLACE_WITH_STRIPE_PUBLISHABLE_KEY">
-          </stripe-buy-button>
+          <!-- TODO Javier: Stripe Payment Link (Live), 39 EUR/month -->
+          <a class="btn brass" href="REPLACE_WITH_MONTHLY_PAYMENT_LINK" rel="noopener">Subscribe &mdash; &euro;39/month</a>
         </div>
       </div>
-
-      <div class="plan pick">
-        <span class="tag">Launch price</span>
-        <h3>Lifetime licence</h3>
-        <p class="who">For traders who have run it on demo and want to keep it.</p>
-        <p class="price">&euro;349<small> once</small></p>
-        <p class="was">Going up once the published 2018&ndash;2024 test is finished.</p>
+      <div class="plan">
+        <h3>One payment</h3>
+        <p class="who">Same software, paid once. Worth it from roughly nine months on, if you already know you want to keep it.</p>
+        <p class="price">&euro;349 <small>once</small></p>
+        <p class="was">VAT included &middot; no recurring charge</p>
         <ul>
-          <li>Up to three MetaTrader 5 accounts, no expiry</li>
-          <li>All version 1.x updates included</li>
-          <li>Priority email support</li>
-          <li>Free account transfer</li>
+          <li>Everything in the monthly plan</li>
+          <li>Licence that does not expire</li>
+          <li>Updates included</li>
+          <li>Still limited to three accounts</li>
         </ul>
         <div class="pay-slot">
-          <!-- TODO Javier: paste the Stripe buy button for the LIFETIME plan here. -->
-          <stripe-buy-button
-            buy-button-id="REPLACE_WITH_LIFETIME_BUY_BUTTON_ID"
-            publishable-key="REPLACE_WITH_STRIPE_PUBLISHABLE_KEY">
-          </stripe-buy-button>
+          <!-- TODO Javier: Stripe Payment Link (Live), 349 EUR one-off -->
+          <a class="btn ghost" href="REPLACE_WITH_LIFETIME_PAYMENT_LINK" rel="noopener">Buy once &mdash; &euro;349</a>
         </div>
       </div>
     </div>
-
-    <p class="hint">Your licence key works on up to three MetaTrader 5 account numbers, demo or live. The robot checks the key when it starts and every few hours after that; short internet outages are tolerated. Changing broker or account is free: write in and the key is reissued. The expert advisor arrives by email with your key, normally within a few hours and always within one working day.</p>
+    <p class="hint">Your key looks like <code>WSF-XXXX-XXXX-XXXX</code> and works on up to three MetaTrader 5 accounts, demo or live, so your demo, your live account and a backup terminal are all covered. The EA checks it against <code>api.wisfli.com</code> over HTTPS, sending only the key and the account number. Invoices, card changes and cancellation are at <a href="https://api.wisfli.com/manage">api.wisfli.com/manage</a>. If you cancel you keep access to the end of the period you paid for; after that the EA stops opening new positions and nothing else changes, so open trades are never left unmanaged.</p>
   </div>
 </section>
 
@@ -612,8 +602,8 @@ footer .legal strong{color:var(--dmuted)}
   <div class="wrap">
     <div class="head solo"><h2>From payment to first signal</h2></div>
     <ol class="steps">
-      <li><b>Pay</b><p>Checkout is Stripe. You will receive an email with the expert advisor attached and your licence key.</p></li>
-      <li><b>Install and allow the licence check</b><p>Drop the file into <code>MQL5/Experts</code>, restart MetaTrader, then add <code>https://api.wisfli.com</code> under Tools &rarr; Options &rarr; Expert Advisors so the key can be verified.</p></li>
+      <li><b>Pay</b><p>Stripe confirms the payment and the email arrives with <code>KalmanFlow.ex5</code> attached and your licence key.</p></li>
+      <li><b>Install and allow the licence check</b><p>In MetaTrader: File &rarr; Open Data Folder &rarr; MQL5 &rarr; Experts. Drop the file there and refresh the Navigator. Then tick <em>Allow WebRequest for listed URL</em> under Tools &rarr; Options &rarr; Expert Advisors and add <code>https://api.wisfli.com</code>. This is the single most common reason a first run fails.</p></li>
       <li><b>Backtest it yourself first</b><p>The Strategy Tester needs no key at all. Run it on your own broker's data and your own spread before you put money behind it, because the spread is what decides whether this method works on a given instrument.</p></li>
       <li><b>Run it on demo</b><p>Attach it to a chart, enter your key, set the risk percentage. Leave it on demo long enough to see it sit out a quiet stretch, because that is a feature and it looks like nothing happening.</p></li>
     </ol>
@@ -703,7 +693,6 @@ footer .legal strong{color:var(--dmuted)}
 </footer>
 
 <script>document.getElementById('yr').textContent = new Date().getFullYear();</script>
-<script src="https://js.stripe.com/v3/buy-button.js" async></script>
 <script>
 /* Armada panel — reads the account's own published stats.json.
    Nothing here is hand typed: if the bot has not traded, it says so. */
